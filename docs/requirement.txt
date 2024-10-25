@@ -1,0 +1,1 @@
+Use the camel package to create a multi-agent system where each agent mimics an individual according to podcast scripts from the Podium API and they can chat with each other or with the user.
