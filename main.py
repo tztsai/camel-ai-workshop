@@ -1,91 +1,182 @@
-# =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
-# Licensed under the Apache License, Version 2.0 (the “License”);
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an “AS IS” BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# =========== Copyright 2023 @ CAMEL-AI.org. All Rights Reserved. ===========
+import os
+import glob
+import dotenv
+
+dotenv.load_dotenv()
+os.makedirs('local_data', exist_ok=True)
+
+"""Import and set the embedding instance:"""
+
+from camel.embeddings import OpenAIEmbedding
+from camel.types import EmbeddingModelType
+
+embedding_instance = OpenAIEmbedding(model_type=EmbeddingModelType.TEXT_EMBEDDING_3_LARGE)
+
+"""Import and set the vector storage instance:"""
+
+from camel.storages import QdrantStorage
+
+storage_instance = QdrantStorage(
+    vector_dim=embedding_instance.get_output_dim(),
+    path="local_data",
+    collection_name="podcast",
+)
+
+from camel.agents import ChatAgent
+from camel.messages import BaseMessage
+from camel.types import RoleType
+from camel.retrievers import AutoRetriever
+from camel.types import StorageType
+
+from typing import List
 from colorama import Fore
+from functools import partial
 
+from camel.agents.chat_agent import FunctionCallingRecord
+from camel.configs import ChatGPTConfig, SambaCloudAPIConfig
+from camel.toolkits import (
+    MathToolkit,
+    RetrievalToolkit,
+)
 from camel.societies import RolePlaying
+from camel.types import ModelType, ModelPlatformType
 from camel.utils import print_text_animated
+from camel.models import ModelFactory, MistralModel
+from camel.toolkits import FunctionTool
+
+from camel.memories import (
+    ChatHistoryBlock,
+    LongtermAgentMemory,
+    MemoryRecord,
+    ScoreBasedContextCreator,
+    VectorDBBlock,
+)
+from camel.messages import BaseMessage
+from camel.types import ModelType, OpenAIBackendRole
+from camel.utils import OpenAITokenCounter
+
+def load_memory(docs):
+    # Initialize the memory
+    memory = LongtermAgentMemory(
+        context_creator=ScoreBasedContextCreator(
+            token_counter=OpenAITokenCounter(ModelType.GPT_4O_MINI),
+            token_limit=4096,
+        ),
+        chat_history_block=ChatHistoryBlock(),
+        vector_db_block=VectorDBBlock(),
+    )
+
+    # Create and write new records
+    records = [
+        MemoryRecord(
+            message=BaseMessage.make_assistant_message(
+                role_name="Agent",
+                content=open(doc).read(),
+            ),
+            role_at_backend=OpenAIBackendRole.ASSISTANT,
+        ) for doc in docs
+    ]
+    memory.write_records(records)
+    return memory
 
 
-def main(model=None) -> None:
-    task_prompt = "Develop a trading bot for the stock market"
-    role_play_session = RolePlaying(
-        assistant_role_name="Python Programmer",
-        assistant_agent_kwargs=dict(model=model),
-        user_role_name="Stock Trader",
-        user_agent_kwargs=dict(model=model),
+def role_playing_with_rag(
+    task_prompt,
+    interviewer,
+    interviewee,
+    model_platform=ModelPlatformType.OPENAI,
+    model_type="gpt-4o-mini",
+    chat_turn_limit=5,
+) -> None:
+    task_prompt = task_prompt
+    
+    def make_tool(name):
+        ar = AutoRetriever(
+            vector_storage_local_path="camel/temp_storage",
+            storage_type=StorageType.QDRANT,
+        )
+        def f(*args, **kwds):
+            return ar.run_vector_retriever(*args, **kwds, contents=glob.glob(f"local_data/*"))
+        return FunctionTool(f)
+    
+    tool_lists = []
+    for i in range(2):
+        name = [interviewer, interviewee][i]
+        tool_lists.append([make_tool(name)])
+
+    society = RolePlaying(
+        user_role_name=interviewer,
+        assistant_role_name=interviewee,
+        user_agent_kwargs=dict(
+            model=ModelFactory.create(
+                model_platform=model_platform,
+                model_type=model_type,
+            ),
+            tools=tool_lists[0],
+        ),
+        assistant_agent_kwargs=dict(
+            model=ModelFactory.create(
+                model_platform=model_platform,
+                model_type=model_type,
+            ),
+            tools=tool_lists[1],
+        ),
         task_prompt=task_prompt,
-        with_task_specify=True,
-        task_specify_agent_kwargs=dict(model=model),
-        output_language="Chinese",  # Arabic, French, Spanish, ...
+        with_task_specify=False,
     )
+    society.user_agent.memory = load_memory(glob.glob(f"local_data/{interviewer}*"))
+    society.assistant_agent.memory = load_memory(glob.glob(f"local_data/{interviewee}*"))
 
-    print(
-        Fore.GREEN
-        + f"AI Assistant sys message:\n{role_play_session.assistant_sys_msg}\n"
-    )
-    print(
-        Fore.BLUE + f"AI User sys message:\n{role_play_session.user_sys_msg}\n"
-    )
+    """### Step 3: Solving Tasks with Your Society
+    Hold your bytes. Prior to our travel, let's define a small helper function.
+    """
 
-    print(Fore.YELLOW + f"Original task prompt:\n{task_prompt}\n")
-    print(
-        Fore.CYAN
-        + "Specified task prompt:"
-        + f"\n{role_play_session.specified_task_prompt}\n"
-    )
-    print(Fore.RED + f"Final task prompt:\n{role_play_session.task_prompt}\n")
+    def is_terminated(response):
+        """
+        Give alerts when the session shuold be terminated.
+        """
+        if response.terminated:
+            role = response.msg.role_type.name
+            reason = response.info['termination_reasons']
+            print(f'AI {role} terminated due to {reason}')
 
-    chat_turn_limit, n = 50, 0
-    input_msg = role_play_session.init_chat()
-    while n < chat_turn_limit:
-        n += 1
-        assistant_response, user_response = role_play_session.step(input_msg)
+        return response.terminated
 
-        if assistant_response.terminated:
-            print(
-                Fore.GREEN
-                + (
-                    "AI Assistant terminated. Reason: "
-                    f"{assistant_response.info['termination_reasons']}."
-                )
-            )
-            break
-        if user_response.terminated:
-            print(
-                Fore.GREEN
-                + (
-                    "AI User terminated. "
-                    f"Reason: {user_response.info['termination_reasons']}."
-                )
-            )
-            break
+    """Time to chart our course – writing a simple loop for our society to proceed:"""
 
-        print_text_animated(
-            Fore.BLUE + f"AI User:\n\n{user_response.msg.content}\n"
-        )
-        print_text_animated(
-            Fore.GREEN + "AI Assistant:\n\n"
-            f"{assistant_response.msg.content}\n"
-        )
+    def run(society, round_limit: int=10):
 
-        if "CAMEL_TASK_DONE" in user_response.msg.content:
-            break
+        # Get the initial message from the ai assistant to the ai user
+        input_msg = society.init_chat()
 
-        input_msg = assistant_response.msg
+        # Starting the interactive session
+        for _ in range(round_limit):
 
+            # Get the both responses for this round
+            assistant_response, user_response = society.step(input_msg)
 
-if __name__ == "__main__":
-    from camel.types import ModelType
+            # Check the termination condition
+            if is_terminated(assistant_response) or is_terminated(user_response):
+                break
 
-    main(ModelType.GPT_4)
+            # Get the results
+            print(f'[AI User] {user_response.msg.content}.\n')
+            # Check if the task is end
+            if 'CAMEL_TASK_DONE' in user_response.msg.content:
+                break
+            print(f'[AI Assistant] {assistant_response.msg.content}.\n')
+
+            # Get the input message for the next round
+            input_msg = assistant_response.msg
+
+        return None
+
+    run(society)
+
+"""Run the role-playing with defined retriever function:"""
+
+role_playing_with_rag(
+    task_prompt = """Conduct a podcast episode discussion using past podcast transcripts. Each agent should take on a specific role based on their unique perspectives and styles as reflected in the transcripts. Engage in a lively conversation, sharing insights and experiences related to the topics discussed in the previous episodes.""",
+    interviewee="Elon",
+    interviewer="Bernie",
+)

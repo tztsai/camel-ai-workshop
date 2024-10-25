@@ -1,6 +1,6 @@
-2024-10-25 17:07:22,948 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
-2024-10-25 17:07:22,987 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
-2024-10-25 17:07:23,589 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
-2024-10-25 17:07:23,589 - WARNING - Failed to track an agent with the @track_agent decorator.
-2024-10-25 17:07:23,591 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
-2024-10-25 17:07:23,591 - WARNING - Failed to track an agent with the @track_agent decorator.
+2024-10-25 17:35:39,224 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 17:35:39,245 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 17:35:39,560 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
+2024-10-25 17:35:39,560 - WARNING - Failed to track an agent with the @track_agent decorator.
+2024-10-25 17:35:39,561 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
+2024-10-25 17:35:39,561 - WARNING - Failed to track an agent with the @track_agent decorator.
