@@ -71,7 +71,7 @@ def load_memory(docs):
         MemoryRecord(
             message=BaseMessage.make_assistant_message(
                 role_name="Agent",
-                content=open(doc).read(),
+                content=open(doc).read()[-10_000:],
             ),
             role_at_backend=OpenAIBackendRole.ASSISTANT,
         ) for doc in docs
@@ -85,7 +85,7 @@ def role_playing_with_rag(
     interviewer,
     interviewee,
     model_platform=ModelPlatformType.OPENAI,
-    model_type="gpt-4o-mini",
+    model_type="gpt-4o",
     chat_turn_limit=5,
 ) -> None:
     task_prompt = task_prompt
