@@ -23,6 +23,7 @@ class PodiumAPI:
         Raises:
             ValueError: If the podcast_id is invalid or the script cannot be fetched.
         """
+        print("hello")
         # Simulate fetching a script from the Podium API.
         # In a real implementation, this would involve making an HTTP request to the API.
         if not podcast_id:
