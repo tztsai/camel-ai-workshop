@@ -1,8 +1,11 @@
 ## podium_api.py
+<<<<<<< HEAD
 from python_graphql_client import GraphqlClient
 
 PODCAST_ID = '721928'
 
+=======
+>>>>>>> 8359351 (refactor and update)
 
 class PodiumAPI:
     """Handles interactions with the Podium API to fetch podcast scripts."""
@@ -13,6 +16,7 @@ class PodiumAPI:
         Args:
             api_key: The API key used for authenticating requests to the Podium API.
         """
+<<<<<<< HEAD
 
         query = """
         mutation {
@@ -90,6 +94,11 @@ class PodiumAPI:
 
 
     def fetch_script(self, person_name: str) -> str:
+=======
+        self._api_key = api_key
+
+    def fetch_script(self, podcast_id: str) -> str:
+>>>>>>> 8359351 (refactor and update)
         """Fetches the script of a podcast using its ID.
         
         Args:
@@ -99,6 +108,7 @@ class PodiumAPI:
             A string containing the script of the podcast.
         
         Raises:
+<<<<<<< HEAD
 
             ValueError: If the podcast_id is invalid or the script cannot be fetched.
         """
@@ -154,3 +164,15 @@ class PodiumAPI:
         # Execute the GraphQL call using our API's endpoint and your query.
         print("hello")
 
+=======
+            ValueError: If the podcast_id is invalid or the script cannot be fetched.
+        """
+        # Simulate fetching a script from the Podium API.
+        # In a real implementation, this would involve making an HTTP request to the API.
+        if not podcast_id:
+            raise ValueError("Invalid podcast ID provided.")
+
+        # For demonstration purposes, return a mock script.
+        # Replace this with actual API call logic.
+        return f"Script for podcast {podcast_id}: This is a sample podcast script."
+>>>>>>> 8359351 (refactor and update)

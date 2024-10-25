@@ -2,9 +2,11 @@
 
 from typing import List
 from agent import Agent
+from 
 
 class AgentManager:
     """Manages the creation and interaction of agents."""
+    model = "gpt-4o"
 
     def __init__(self):
         """Initializes the AgentManager with an empty list of agents."""
@@ -42,6 +44,17 @@ class AgentManager:
         Returns:
             A string representing the interaction result.
         """
+        task_prompt = "Develop a trading bot for the stock market"
+        role_play_session = RolePlaying(
+            assistant_role_name="Python Programmer",
+            assistant_agent_kwargs=dict(model=self.model),
+            user_role_name="Stock Trader",
+            user_agent_kwargs=dict(model=self.model),
+            task_prompt=task_prompt,
+            with_task_specify=True,
+            task_specify_agent_kwargs=dict(model=self.model),
+            output_language="Chinese",  # Arabic, French, Spanish, ...
+        )
         response1 = agent1.mimic_personality()
         response2 = agent2.mimic_personality()
         return f"Interaction between {agent1._name} and {agent2._name}: {response1} | {response2}"

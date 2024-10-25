@@ -1,0 +1,18 @@
+2024-10-25 16:08:10,376 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:10,376 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 16:08:10,512 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:10,512 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 16:08:10,599 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:10,599 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 16:08:10,932 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
+2024-10-25 16:08:10,932 - WARNING - Failed to track an agent with the @track_agent decorator.
+2024-10-25 16:08:10,939 - WARNING - Error: 'NoneType' object has no attribute 'create_agent'
+2024-10-25 16:08:10,939 - WARNING - Failed to track an agent with the @track_agent decorator.
+2024-10-25 16:08:15,255 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:15,256 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:15,256 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:15,256 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
+2024-10-25 16:08:17,510 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:17,511 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:17,511 - WARNING - Failed to track an agent ChatAgent with the @track_agent decorator.
+2024-10-25 16:08:17,511 - WARNING - Could not record event - no sessions detected. Create a session by calling agentops.start_session()
