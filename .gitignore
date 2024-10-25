@@ -1,12 +1,8 @@
 __pycache__
 *.pyc
-<<<<<<< HEAD
 .vs
+.env
 .venv
-=======
-multi_agent_podcast_system/ui/
-.vs
->>>>>>> 8359351 (refactor and update)
 
 *.sqlite
 *.lock
