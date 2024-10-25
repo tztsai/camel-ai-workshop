@@ -7,3 +7,7 @@ __pycache__
 multi_agent_podcast_system/ui/
 .vs
 >>>>>>> 8359351 (refactor and update)
+
+*.sqlite
+*.lock
+*.log

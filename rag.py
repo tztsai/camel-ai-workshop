@@ -38,21 +38,9 @@ Let's first load the CAMEL paper from https://arxiv.org/pdf/2303.17760.pdf. This
 import os
 import glob
 import dotenv
-import requests
 
 dotenv.load_dotenv()
 os.makedirs('local_data', exist_ok=True)
-
-url = "https://arxiv.org/pdf/2303.17760.pdf"
-response = requests.get(url)
-with open('local_data/camel_paper.pdf', 'wb') as file:
-     file.write(response.content)
-
-"""## 1. Customized RAG
-In this section we will set our customized RAG pipeline, we will take `VectorRetriever` as an example.
-Set embedding model, we will use `OpenAIEmbedding` as the embedding model, so we need to set the `OPENAI_API_KEY` in below.
-"""
-
 
 """Import and set the embedding instance:"""
 
@@ -68,77 +56,8 @@ from camel.storages import QdrantStorage
 storage_instance = QdrantStorage(
     vector_dim=embedding_instance.get_output_dim(),
     path="local_data",
-    collection_name="camel_paper",
+    collection_name="podcast",
 )
-
-"""Import and set the retriever instance:"""
-
-from camel.retrievers import VectorRetriever
-
-vector_retriever = VectorRetriever(embedding_model=embedding_instance,
-                                   storage=storage_instance)
-
-"""We use integrated `Unstructured Module` to splite the content into small chunks, the content will be splited automacitlly with its `chunk_by_title` function, the max character for each chunk is 500 characters, which is a suitable length for `OpenAIEmbedding`. All the text in the chunks will be embed and stored to the vector storage instance, it will take some time, please wait.."""
-
-vector_retriever.process(
-    content="local_data/camel_paper.pdf",
-)
-
-"""
-Now we can retrieve information from the vector storage by giving a query. By default it will give you back the text content from top 1 chunk with highest Cosine similarity score, and the similarity score should be higher than 0.75 to ensure the retrieved content is relevant to the query. You can also change the `top_k` value and `similarity_threshold` value with your needs.
-
-The returned dictionary list includes:
-- similarity score
-- content path
-- metadata
-- text"""
-
-retrieved_info = vector_retriever.query(
-    query="To address the challenges of achieving autonomous cooperation, we propose a novel communicative agent framework named role-playing .",
-    top_k=1
-)
-print(retrieved_info)
-
-"""Let's try an irrelevant query:"""
-
-retrieved_info_irrevelant = vector_retriever.query(
-    query="Compared with dumpling and rice, which should I take for dinner?",
-    top_k=1,
-)
-
-print(retrieved_info_irrevelant)
-
-"""## 2. Auto RAG
-In this section we will run the `AutoRetriever` with default settings. It uses `OpenAIEmbedding` as default embedding model and `Milvus` as default vector storage.
-
-What you need to do is:
-- Set content input paths, which can be local paths or remote urls
-- Set remote url and api key for Milvus
-- Give a query
-
-The Auto RAG pipeline would create collections for given content input paths, the collection name will be set automaticlly based on the content input path name, if the collection exists, it will do the retrieve directly.
-"""
-
-from camel.retrievers import AutoRetriever
-from camel.types import StorageType
-
-auto_retriever = AutoRetriever(
-        vector_storage_local_path="local_data2/",
-        storage_type=StorageType.QDRANT,
-        embedding_model=embedding_instance)
-
-retrieved_info = auto_retriever.run_vector_retriever(
-    query="If I'm interest in contributing to the CAMEL projec, what should I do?",
-    contents=[
-        "local_data/camel_paper.pdf",  # example local path
-        "https://github.com/camel-ai/camel/wiki/Contributing-Guidlines",  # example remote url
-    ],
-    top_k=1,
-    return_detailed_info=True,
-    similarity_threshold=0.5
-)
-
-print(retrieved_info)
 
 """## 3. Single Agent with Auto RAG
 In this section we will show how to combine the `AutoRetriever` with one `ChatAgent`.
@@ -178,18 +97,18 @@ def single_agent(query: str, name: str) ->str :
     assistant_response = agent.step(user_msg)
     return assistant_response.msg.content
 
-print(single_agent("If I'm interest in contributing to the CAMEL projec, what should I do?"))
+# print(single_agent("Please summarize the most important things you said in the past episodes", "Elon Musk"))
 
 """## 4. Role-playing with Auto RAG
 In this section we will show how to combine the `RETRIEVAL_FUNCS` with `RolePlaying` by applying `Function Calling`.
-
 """
 
 from typing import List
 from colorama import Fore
+from functools import partial
 
 from camel.agents.chat_agent import FunctionCallingRecord
-from camel.configs import ChatGPTConfig
+from camel.configs import ChatGPTConfig, SambaCloudAPIConfig
 from camel.toolkits import (
     MathToolkit,
     RetrievalToolkit,
@@ -198,36 +117,52 @@ from camel.societies import RolePlaying
 from camel.types import ModelType, ModelPlatformType
 from camel.utils import print_text_animated
 from camel.models import ModelFactory
+from camel.toolkits import FunctionTool
 
 def role_playing_with_rag(
     task_prompt,
+    interviewer,
+    interviewee,
     model_platform=ModelPlatformType.OPENAI,
-    model_type=ModelType.GPT_4O_MINI,
+    model_type="gpt-4o",
     chat_turn_limit=5,
 ) -> None:
     task_prompt = task_prompt
-
-    tools_list = [
-        *MathToolkit().get_tools(),
-        *RetrievalToolkit().get_tools(),
-    ]
-
+    
+    def make_tool(name):
+        ar = AutoRetriever(
+            vector_storage_local_path="camel/temp_storage",
+            storage_type=StorageType.QDRANT,
+        )
+        def f(*args, **kwds):
+            return ar.run_vector_retriever(*args, **kwds, contents=glob.glob(f"local_data/{name}*"))
+        return f
+    
+    tool_lists = []
+    for i in range(2):
+        name = [interviewer, interviewee][i]
+        tool_lists.append([FunctionTool(make_tool(name))])
 
     role_play_session = RolePlaying(
-        assistant_role_name="Searcher",
-        user_role_name="Professor",
-        assistant_agent_kwargs=dict(
-            model=ModelFactory.create(
-                model_platform=model_platform,
-                model_type=model_type,
-            ),
-            tools=tools_list,
-        ),
+        user_role_name=interviewer,
+        assistant_role_name=interviewee,
         user_agent_kwargs=dict(
             model=ModelFactory.create(
                 model_platform=model_platform,
                 model_type=model_type,
+                # model_config_dict=SambaCloudAPIConfig(max_tokens=8192).as_dict(),
+                # url="https://api.sambanovacloud.com/v1"
             ),
+            tools=tool_lists[0],
+        ),
+        assistant_agent_kwargs=dict(
+            model=ModelFactory.create(
+                model_platform=model_platform,
+                model_type=model_type,
+                # model_config_dict=SambaCloudAPIConfig(max_tokens=8192).as_dict(),
+                # url="https://api.sambanovacloud.com/v1"
+            ),
+            tools=tool_lists[1],
         ),
         task_prompt=task_prompt,
         with_task_specify=False,
@@ -297,4 +232,8 @@ def role_playing_with_rag(
 
 """Run the role-playing with defined retriever function:"""
 
-role_playing_with_rag(task_prompt = """If I'm interest in contributing to the CAMEL projec and I encounter some challenges during the setup process, what should I do? You should refer to the content in url https://github.com/camel-ai/camel/wiki/Contributing-Guidlines to answer my question, don't generate the answer by yourself, adjust the similarity threshold to lower value is necessary""")
+role_playing_with_rag(
+    task_prompt = """Conduct a podcast episode discussion using past podcast transcripts. Each agent should take on a specific role based on their unique perspectives and styles as reflected in the transcripts. Engage in a lively conversation, sharing insights and experiences related to the topics discussed in the previous episodes.""",
+    interviewee="Elon Musk",
+    interviewer="Bernie Sanders",
+)
